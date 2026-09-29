@@ -118,3 +118,77 @@ test('lays out pages and renders a PDF', async () => {
   const pdf = await renderPdf(layout);
   assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
 });
+
+test('fetches ESV text with the API key and splits it into verses', async () => {
+  const { fetchPassage, normalizeTranslation, splitEsvVerses } = await import('../lib/bible.js');
+  const realFetch = globalThis.fetch;
+  const prevKey = process.env.ESV_API_KEY;
+  let seen;
+  globalThis.fetch = async (url, init) => {
+    seen = { url: new URL(url), init };
+    return new Response(JSON.stringify({
+      canonical: 'John 3:16–17',
+      passages: ['[16] For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life. [17] For God did not send his Son into the world to condemn the world, but in order that the world might be saved through him.\n\n'],
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    delete process.env.ESV_API_KEY;
+    assert.equal(normalizeTranslation('esv'), 'kjv'); // ESV is off without a key
+    process.env.ESV_API_KEY = 'test-key';
+    assert.equal(normalizeTranslation(''), 'esv'); // and the default once it's set up
+
+    const passage = await fetchPassage('John 3:16-17', 'esv');
+    assert.equal(seen.url.pathname, '/v3/passage/text/');
+    assert.equal(seen.url.searchParams.get('q'), 'John 3:16-17');
+    assert.equal(seen.url.searchParams.get('include-headings'), 'false');
+    assert.equal(seen.init.headers.Authorization, 'Token test-key');
+    assert.deepEqual(passage.verses.map((v) => v.verse), [16, 17]);
+    assert.ok(passage.text.startsWith('For God so loved the world'));
+    assert.ok(!passage.text.includes('['));
+  } finally {
+    globalThis.fetch = realFetch;
+    if (prevKey === undefined) delete process.env.ESV_API_KEY;
+    else process.env.ESV_API_KEY = prevKey;
+  }
+  assert.deepEqual(splitEsvVerses('no numbers here'), [{ verse: null, text: 'no numbers here' }]);
+});
+
+test('keeps at most the allowed number of ESV verses saved', () => {
+  const store = new WorksheetStore({ verseLimits: { esv: 5 } });
+  const make = (ref, n) => ({
+    reference: ref,
+    translation: 'esv',
+    title: ref,
+    passages: [{ reference: ref, translation: 'esv', verses: Array.from({ length: n }, (_, i) => ({ verse: i + 1, text: 'x' })), text: 'x' }],
+  });
+  for (const w of [make('Psalm 1:1-3', 3), make('Psalm 2:1-2', 2)]) {
+    store.savePassage(w.passages[0]);
+    store.save(w, { query: w.reference });
+  }
+  assert.ok(store.get('Psalm 1:1-3', 'esv') && store.get('Psalm 2:1-2', 'esv'));
+
+  const newest = make('Psalm 3:1-2', 2);
+  store.savePassage(newest.passages[0]);
+  store.save(newest);
+  assert.ok(store.get('Psalm 3:1-2', 'esv'));
+  assert.ok(store.get('Psalm 2:1-2', 'esv'));
+  assert.equal(store.get('Psalm 1:1-3', 'esv'), null); // oldest dropped
+  assert.equal(store.getPassage('Psalm 1:1-3', 'esv'), null);
+  assert.equal(store.getByAlias('Psalm 1:1-3', 'esv'), null);
+});
+
+test('prints the ESV copyright notice on every page', () => {
+  const layout = layoutWorksheet(
+    {
+      reference: 'John 3:16', translation: 'esv', title: 'Test', reflection: 'Draw.',
+      copyright: 'Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway.',
+      passages: [{ reference: 'John 3:16', text: 'word '.repeat(200) }],
+    },
+    { size: 'large' },
+    measure,
+  );
+  assert.ok(layout.pages.length > 1);
+  for (const page of layout.pages) {
+    assert.ok(page.items.some((i) => i.t === 'text' && i.text.includes('Crossway')));
+  }
+});

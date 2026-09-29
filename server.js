@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SITE } from './config/site.js';
 import { agentAvailable } from './lib/agent.js';
-import { normalizeTranslation, PassageNotFoundError, TRANSLATIONS } from './lib/bible.js';
+import { availableTranslations, COPYRIGHT, defaultTranslation, normalizeTranslation, PassageNotFoundError, TRANSLATIONS } from './lib/bible.js';
 import { DEFAULT_SIZE, layoutWorksheet, SIZES } from './lib/layout.js';
 import { FONT_FILES, measure, renderPdf } from './lib/pdf.js';
 import { currentSeason, parseDateParam } from './lib/seasons.js';
@@ -27,7 +27,9 @@ export function createApp({ store = new WorksheetStore({ file: path.join(root, '
   app.get('/api/config', (req, res) => {
     res.json({
       site: SITE,
-      translations: TRANSLATIONS,
+      translations: availableTranslations(),
+      defaultTranslation: defaultTranslation(),
+      copyright: COPYRIGHT,
       sizes: Object.fromEntries(Object.entries(SIZES).map(([k, v]) => [k, v.label])),
       defaultSize: DEFAULT_SIZE,
       ai: agentAvailable(),
@@ -48,7 +50,11 @@ export function createApp({ store = new WorksheetStore({ file: path.join(root, '
   const withWorksheet = (handler) => async (req, res) => {
     try {
       const worksheet = await worksheets.resolve(req.query.q, normalizeTranslation(req.query.t));
-      const full = { ...worksheet, translationName: TRANSLATIONS[worksheet.translation] };
+      const full = {
+        ...worksheet,
+        translationName: TRANSLATIONS[worksheet.translation],
+        copyright: COPYRIGHT[worksheet.translation],
+      };
       await handler(req, res, full, layoutWorksheet(full, options(req.query), measure));
     } catch (err) {
       const status = err instanceof WorksheetRequestError || err instanceof PassageNotFoundError ? 400 : 502;

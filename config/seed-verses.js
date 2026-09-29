@@ -166,7 +166,7 @@ export const FAMOUS_PASSAGES = {
   "the lord's prayer": 'Matthew 6:9-13',
   'lords prayer': 'Matthew 6:9-13',
   'our father': 'Matthew 6:9-13',
-  'psalm 23': 'Psalm 23',
+  'psalm 23': 'Psalm 23:1-6',
   'the lord is my shepherd': 'Psalm 23:1',
   'love is patient': '1 Corinthians 13:4-7',
   'charity suffereth long': '1 Corinthians 13:4-7',

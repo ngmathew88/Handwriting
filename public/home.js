@@ -9,6 +9,15 @@ async function loadConfig() {
   $('[data-site-tagline]').textContent = config.site.tagline;
   document.title = `${config.site.name} · Bible verse handwriting pages for kids`;
   if (!config.ai) $('#q').placeholder = 'Type a verse, like John 3:16 or Psalm 23:1';
+
+  const notices = Object.keys(config.translations).map((t) => config.copyright[t]).filter(Boolean);
+  const publicDomain = Object.entries(config.translations)
+    .filter(([t]) => !config.copyright[t])
+    .map(([, name]) => name);
+  $('[data-footer]').textContent = [
+    ...notices,
+    publicDomain.length ? `${publicDomain.join(' and ')}: public domain.` : '',
+  ].join(' ');
 }
 
 async function loadSuggestions() {
