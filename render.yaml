@@ -1,0 +1,29 @@
+# Render Blueprint: sets up the website on render.com.
+# In Render: New + → Blueprint → pick this repository.
+services:
+  - type: web
+    name: little-scribes
+    runtime: node
+    # "starter" is the cheapest plan that stays awake and can keep a disk.
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/config
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATA_DIR
+        value: /var/data
+      # Render asks you to paste these when you create the Blueprint.
+      - key: ESV_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+    # Keeps saved worksheets when the site restarts or updates.
+    disk:
+      name: worksheets
+      mountPath: /var/data
+      sizeGB: 1
+    domains:
+      - littlescribes.site
+      - www.littlescribes.site

@@ -46,6 +46,18 @@ API terms, the site:
 Check the current terms on api.esv.org, especially if the site is used
 commercially or by a large audience.
 
+## Putting it online (Render)
+
+`render.yaml` sets everything up on [Render](https://render.com):
+
+1. In Render, choose **New + → Blueprint**, connect GitHub, and pick this repository.
+2. Paste your `ESV_API_KEY` (and `ANTHROPIC_API_KEY`, if using the AI helper) when asked.
+3. After it deploys, open the service's **Settings → Custom Domains** and add the
+   DNS records Render shows you at your domain registrar.
+
+Saved worksheets are kept on a small persistent disk (`DATA_DIR=/var/data`).
+Every push to the deployed branch redeploys the site automatically.
+
 ## How it works
 
 | Piece | File |

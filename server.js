@@ -12,7 +12,10 @@ import { buildSeed, createWorksheetService, WorksheetRequestError } from './lib/
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
-export function createApp({ store = new WorksheetStore({ file: path.join(root, 'data', 'store.json'), seed: buildSeed() }), service } = {}) {
+// Where saved worksheets live. On a host, point DATA_DIR at a persistent disk.
+const dataDir = process.env.DATA_DIR || path.join(root, 'data');
+
+export function createApp({ store = new WorksheetStore({ file: path.join(dataDir, 'store.json'), seed: buildSeed() }), service } = {}) {
   const worksheets = service || createWorksheetService(store);
   const app = express();
 
