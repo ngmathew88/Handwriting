@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Little Scribes · Bible verse handwriting pages for kids</title>
+  <meta name="description" content="Type a Bible verse and get a printable handwriting worksheet kids can trace during church.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="home">
+  <header class="site-header">
+    <a class="brand" href="/"><img src="/favicon.svg" alt="" width="32" height="32"><span data-site-name>Little Scribes</span></a>
+  </header>
+
+  <main class="hero">
+    <h1>Turn any Bible verse into a <span class="accent">handwriting page</span></h1>
+    <p class="tagline" data-site-tagline>Handwriting pages from God’s Word for little hands in big church.</p>
+
+    <form class="search" action="/worksheet" method="get" role="search">
+      <label class="visually-hidden" for="q">Bible verse</label>
+      <input id="q" name="q" type="text" autocomplete="off" required
+             placeholder="Type a verse, like John 3:16 or “the Lord’s prayer”">
+      <button type="submit">Go</button>
+    </form>
+    <p class="hint">Pick more than one with a semicolon: <em>John 3:16; Romans 5:8</em></p>
+
+    <section class="suggestions" aria-labelledby="season-heading">
+      <h2 id="season-heading"><span data-season-name>Favorite</span> verses</h2>
+      <div class="bubbles" data-bubbles></div>
+    </section>
+
+    <section class="popular" data-popular hidden aria-labelledby="popular-heading">
+      <h2 id="popular-heading">Made recently by others</h2>
+      <ul data-popular-list></ul>
+    </section>
+  </main>
+
+  <section class="how">
+    <div><span class="step">1</span><h3>Type a verse</h3><p>A reference like <em>Psalm 23:1</em>, or describe it, like “love is patient.”</p></div>
+    <div><span class="step">2</span><h3>Get a page</h3><p>Gray letters to trace on handwriting lines, plus a space to draw.</p></div>
+    <div><span class="step">3</span><h3>Print &amp; share</h3><p>Print a stack or download the PDF for the kids’ table at church.</p></div>
+  </section>
+
+  <footer class="site-footer">Scripture text: King James Version &amp; World English Bible (public domain).</footer>
+
+  <script type="module" src="/home.js"></script>
+</body>
+</html>

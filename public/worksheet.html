@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Worksheet · Little Scribes</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="worksheet-page">
+  <header class="site-header no-print">
+    <a class="brand" href="/"><img src="/favicon.svg" alt="" width="32" height="32"><span data-site-name>Little Scribes</span></a>
+    <form class="search compact" action="/worksheet" method="get" role="search" data-search>
+      <label class="visually-hidden" for="q">Bible verse</label>
+      <input id="q" name="q" type="text" autocomplete="off" required placeholder="Try another verse">
+      <button type="submit">Go</button>
+    </form>
+  </header>
+
+  <div class="toolbar no-print" data-toolbar>
+    <div class="options">
+      <label>Letter size <select data-opt="size"></select></label>
+      <label>Bible <select data-opt="t"></select></label>
+      <label class="check"><input type="checkbox" data-opt="practice" checked> Blank practice lines</label>
+      <label class="check"><input type="checkbox" data-opt="draw" checked> Drawing box</label>
+    </div>
+    <div class="actions">
+      <button type="button" class="secondary" data-print disabled>Print</button>
+      <a class="button" data-download aria-disabled="true">Download PDF</a>
+    </div>
+  </div>
+
+  <main class="preview" data-preview aria-live="polite">
+    <div class="status no-print" data-status>
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Making your worksheet…</p>
+    </div>
+  </main>
+
+  <script type="module" src="/worksheet.js"></script>
+</body>
+</html>

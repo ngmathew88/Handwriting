@@ -1,0 +1,32 @@
+{
+  "name": "little-scribes",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ngmathew88/Handwriting.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ngmathew88/Handwriting/issues"
+  },
+  "homepage": "https://github.com/ngmathew88/Handwriting#readme",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.129.0",
+    "@fontsource/andika": "^5.3.0",
+    "express": "^5.2.1",
+    "pdfkit": "^0.20.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
