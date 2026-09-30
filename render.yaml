@@ -17,6 +17,8 @@ services:
       # Render asks you to paste these when you create the Blueprint.
       - key: ESV_API_KEY
         sync: false
+      - key: API_BIBLE_KEY
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
     # Keeps saved worksheets when the site restarts or updates.

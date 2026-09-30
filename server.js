@@ -3,7 +3,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SITE } from './config/site.js';
 import { agentAvailable } from './lib/agent.js';
-import { availableTranslations, COPYRIGHT, defaultTranslation, normalizeTranslation, PassageNotFoundError, TRANSLATIONS } from './lib/bible.js';
+import {
+  availableTranslations,
+  COPYRIGHT,
+  defaultTranslation,
+  normalizeTranslation,
+  PassageNotFoundError,
+  rememberCopyright,
+  reportFumsViews,
+  TRANSLATIONS,
+} from './lib/bible.js';
 import { DEFAULT_SIZE, layoutWorksheet, SIZES } from './lib/layout.js';
 import { FONT_FILES, measure, renderPdf } from './lib/pdf.js';
 import { currentSeason, parseDateParam } from './lib/seasons.js';
@@ -17,6 +26,8 @@ const dataDir = process.env.DATA_DIR || path.join(root, 'data');
 
 export function createApp({ store = new WorksheetStore({ file: path.join(dataDir, 'store.json'), seed: buildSeed() }), service } = {}) {
   const worksheets = service || createWorksheetService(store);
+  // Use the publishers' exact copyright wording from previously saved passages.
+  for (const p of Object.values(store.data.passages)) rememberCopyright(p.translation, p.copyright);
   const app = express();
 
   app.disable('x-powered-by');
@@ -41,7 +52,9 @@ export function createApp({ store = new WorksheetStore({ file: path.join(dataDir
 
   app.get('/api/suggestions', (req, res) => {
     const date = parseDateParam(req.query.date) || new Date();
-    res.json({ season: currentSeason(date), popular: store.popular(8) });
+    const available = availableTranslations();
+    const popular = store.popular(20).filter((w) => available[w.translation]).slice(0, 8);
+    res.json({ season: currentSeason(date), popular });
   });
 
   const options = (q) => ({
@@ -56,7 +69,7 @@ export function createApp({ store = new WorksheetStore({ file: path.join(dataDir
       const full = {
         ...worksheet,
         translationName: TRANSLATIONS[worksheet.translation],
-        copyright: COPYRIGHT[worksheet.translation],
+        copyright: worksheet.passages.find((p) => p.copyright)?.copyright || COPYRIGHT[worksheet.translation],
       };
       await handler(req, res, full, layoutWorksheet(full, options(req.query), measure));
     } catch (err) {
@@ -70,7 +83,9 @@ export function createApp({ store = new WorksheetStore({ file: path.join(dataDir
     '/api/worksheet',
     withWorksheet((req, res, worksheet, layout) => {
       const { reference, translation, translationName, title, reflection, passages } = worksheet;
-      res.json({ reference, translation, translationName, title, reflection, passages, layout });
+      // API.Bible usage reporting: the page reports each view with these IDs.
+      const fums = passages.map((p) => p.fums).filter((f) => f?.id).map(({ id, script }) => ({ id, script }));
+      res.json({ reference, translation, translationName, title, reflection, passages: passages.map(({ fums: _, ...p }) => p), layout, fums });
     }),
   );
 
@@ -78,6 +93,7 @@ export function createApp({ store = new WorksheetStore({ file: path.join(dataDir
     '/api/worksheet.pdf',
     withWorksheet(async (req, res, worksheet, layout) => {
       const pdf = await renderPdf(layout, { title: `${worksheet.title} — ${worksheet.reference}` });
+      reportFumsViews(worksheet.passages);
       const filename = `${worksheet.reference.replace(/[^a-z0-9]+/gi, '-')}-${worksheet.translation}-worksheet.pdf`;
       res
         .type('application/pdf')

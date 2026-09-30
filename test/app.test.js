@@ -120,7 +120,7 @@ test('lays out pages and renders a PDF', async () => {
 });
 
 test('fetches ESV text with the API key and splits it into verses', async () => {
-  const { fetchPassage, normalizeTranslation, splitEsvVerses } = await import('../lib/bible.js');
+  const { fetchPassage, normalizeTranslation, splitNumberedVerses } = await import('../lib/bible.js');
   const realFetch = globalThis.fetch;
   const prevKey = process.env.ESV_API_KEY;
   let seen;
@@ -150,7 +150,7 @@ test('fetches ESV text with the API key and splits it into verses', async () => 
     if (prevKey === undefined) delete process.env.ESV_API_KEY;
     else process.env.ESV_API_KEY = prevKey;
   }
-  assert.deepEqual(splitEsvVerses('no numbers here'), [{ verse: null, text: 'no numbers here' }]);
+  assert.deepEqual(splitNumberedVerses('no numbers here'), [{ verse: null, text: 'no numbers here' }]);
 });
 
 test('keeps at most the allowed number of ESV verses saved', () => {
@@ -190,5 +190,83 @@ test('prints the ESV copyright notice on every page', () => {
   assert.ok(layout.pages.length > 1);
   for (const page of layout.pages) {
     assert.ok(page.items.some((i) => i.t === 'text' && i.text.includes('Crossway')));
+  }
+});
+
+test('builds API.Bible passage IDs from references', async () => {
+  const { toPassageId } = await import('../lib/bible.js');
+  assert.equal(toPassageId('John 3:16'), 'JHN.3.16');
+  assert.equal(toPassageId('1 Corinthians 13:4-7'), '1CO.13.4-1CO.13.7');
+  assert.equal(toPassageId('Psalm 23'), 'PSA.23');
+  assert.equal(toPassageId('Song of Solomon 2:4'), 'SNG.2.4');
+  assert.equal(toPassageId('John 3:16-4:2'), 'JHN.3.16-JHN.4.2');
+});
+
+test('fetches NIV/NASB/NKJV from API.Bible with copyright and usage reporting', async () => {
+  const bible = await import('../lib/bible.js');
+  const realFetch = globalThis.fetch;
+  const saved = { API_BIBLE_KEY: process.env.API_BIBLE_KEY, ESV_API_KEY: process.env.ESV_API_KEY };
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: new URL(url), init });
+    if (calls.length === 1) {
+      // First host is down / not JSON: the second host should be tried.
+      return new Response('<html>moved</html>', { status: 404, headers: { 'content-type': 'text/html' } });
+    }
+    return Response.json({
+      data: {
+        id: 'JHN.3.16',
+        content: '     [16] For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.  ',
+        copyright: 'THE HOLY BIBLE, NEW INTERNATIONAL VERSION®, NIV® Copyright © 1973, 1978, 1984, 2011 by Biblica, Inc.®',
+      },
+      meta: {
+        fumsId: 'fums-123',
+        fumsJsInclude: 'cdn.scripture.api.bible/fums/fumsv2.min.js',
+        fumsNoScript: '<img src="https://fums.api.bible/f3?t=fums-123" height="1" width="1"/>',
+      },
+    });
+  };
+  try {
+    delete process.env.ESV_API_KEY;
+    delete process.env.API_BIBLE_KEY;
+    assert.deepEqual(Object.keys(bible.availableTranslations()), ['kjv']); // no keys: public-domain fallback
+    process.env.API_BIBLE_KEY = 'bible-key';
+    assert.deepEqual(Object.keys(bible.availableTranslations()), ['niv', 'nasb', 'nkjv']);
+    assert.equal(bible.normalizeTranslation('kjv'), 'niv'); // KJV/WEB are gone from the menu
+    process.env.ESV_API_KEY = 'esv-key';
+    assert.deepEqual(Object.keys(bible.availableTranslations()), ['esv', 'niv', 'nasb', 'nkjv']);
+    assert.equal(bible.defaultTranslation(), 'esv');
+
+    const p = await bible.fetchPassage('John 3:16', 'niv');
+    assert.equal(calls.length, 2);
+    assert.equal(calls[1].url.pathname, '/v1/bibles/78a9f6124f344018-01/passages/JHN.3.16');
+    assert.equal(calls[1].url.searchParams.get('content-type'), 'text');
+    assert.equal(calls[1].init.headers['api-key'], 'bible-key');
+    assert.deepEqual(p.verses.map((v) => v.verse), [16]);
+    assert.ok(p.text.startsWith('For God so loved the world that he gave his one and only Son'));
+    assert.match(p.copyright, /Biblica/);
+    assert.match(bible.COPYRIGHT.niv, /Biblica/);
+    assert.deepEqual(p.fums, { id: 'fums-123', script: 'cdn.scripture.api.bible/fums/fumsv2.min.js', pixel: 'https://fums.api.bible/f3?t=fums-123' });
+  } finally {
+    globalThis.fetch = realFetch;
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+});
+
+test('explains when the key lacks access to a version', async () => {
+  const { fetchPassage } = await import('../lib/bible.js');
+  const realFetch = globalThis.fetch;
+  const prev = process.env.API_BIBLE_KEY;
+  process.env.API_BIBLE_KEY = 'k';
+  globalThis.fetch = async () => Response.json({ statusCode: 403, message: 'Forbidden' }, { status: 403 });
+  try {
+    await assert.rejects(fetchPassage('John 3:16', 'nasb'), /doesn't have access to the New American Standard Bible/);
+  } finally {
+    globalThis.fetch = realFetch;
+    if (prev === undefined) delete process.env.API_BIBLE_KEY;
+    else process.env.API_BIBLE_KEY = prev;
   }
 });

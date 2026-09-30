@@ -70,6 +70,34 @@ function renderPage(page, layout) {
   return svg;
 }
 
+// API.Bible's Fair Use Management System: tell the publisher each time their
+// text is shown. Their script (URL sent by the server) records the view.
+const fumsScripts = new Map();
+function loadScript(src) {
+  const url = /^(https?:)?\/\//.test(src) ? src : `https://${src}`;
+  if (!fumsScripts.has(url)) {
+    fumsScripts.set(url, new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = url;
+      el.async = true;
+      el.onload = resolve;
+      el.onerror = reject;
+      document.head.append(el);
+    }));
+  }
+  return fumsScripts.get(url);
+}
+async function reportFums(list = []) {
+  for (const { id, script } of list) {
+    try {
+      if (script) await loadScript(script);
+      window._BAPI?.t?.(id);
+    } catch {
+      // Reporting must never break the worksheet.
+    }
+  }
+}
+
 let requestId = 0;
 async function load() {
   if (!state.q) {
@@ -107,6 +135,8 @@ async function load() {
   printBtn.disabled = false;
   download.href = `/api/worksheet.pdf?${queryString()}`;
   download.removeAttribute('aria-disabled');
+
+  reportFums(data.fums);
 
   // Keep the URL shareable with the current options.
   history.replaceState(null, '', `/worksheet?${queryString()}`);
